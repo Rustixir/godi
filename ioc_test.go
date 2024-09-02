@@ -1,6 +1,8 @@
 package godi
 
 import (
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"log/slog"
 	"testing"
 )
@@ -21,14 +23,14 @@ func (s *serviceA) Print() {
 
 // -------------------------------------------------------
 
-func NewServiceB(logger *slog.Logger) serviceB {
+func NewServiceB(logger *zap.Logger) serviceB {
 	return serviceB{
 		logger: logger,
 	}
 }
 
 type serviceB struct {
-	logger *slog.Logger
+	logger *zap.Logger
 }
 
 func (s *serviceB) Print() {
@@ -60,6 +62,10 @@ func (c serviceC) Run() {
 func TestIoc(t *testing.T) {
 
 	AddSlog()
+	AddZapDevelopment(
+		zap.WithCaller(true),
+		zap.WithClock(zapcore.DefaultClock),
+	)
 	AddService("serviceA", NewServiceA)
 	AddService("serviceB", NewServiceB)
 	AddService("serviceC", NewServiceC)

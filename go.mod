@@ -1,4 +1,4 @@
-module github.com/Rustixir/godi
+	module github.com/Rustixir/godi
 
 go 1.22
 

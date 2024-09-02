@@ -6,7 +6,9 @@ import (
 
 type iocContainer struct {
 	modules []fx.Option
-	invoker *fx.Option
+	invoker []fx.Option
+	onStart Hook
+	onStop  Hook
 }
 
 var container iocContainer
@@ -14,14 +16,16 @@ var container iocContainer
 func init() {
 	container = iocContainer{
 		modules: make([]fx.Option, 0),
-		invoker: nil,
+		invoker: make([]fx.Option, 0),
+		onStart: nopHook,
+		onStop:  nopHook,
 	}
 }
 
-func AddService(name string, constructor interface{}, dependencies ...interface{}) {
-	opts := make([]fx.Option, len(dependencies))
+func AddService(name string, constructor interface{}, dependencies ...Option) {
+	opts := make([]Option, 0, len(dependencies))
 	for _, dependency := range dependencies {
-		opts = append(opts, fx.Provide(dependency))
+		opts = append(opts, dependency)
 	}
 	opts = append(opts, fx.Provide(constructor))
 	container.modules = append(
@@ -44,12 +48,23 @@ func AddIService(name string, constructor interface{}, Interface interface{}) {
 
 func OnAfterStart(funcs ...interface{}) {
 	opt := fx.Invoke(funcs...)
-	container.invoker = &opt
+	container.invoker = append(container.invoker, opt)
+}
+
+func AddHook(OnStart Hook, OnStop Hook) {
+	container.onStart = OnStart
+	container.onStop = OnStop
 }
 
 func Run() {
-	if container.invoker != nil {
-		container.modules = append(container.modules, *container.invoker)
+	if len(container.invoker) > 0 {
+		container.modules = append(container.modules, container.invoker...)
 	}
+	container.modules = append(container.modules, fx.Invoke(func(lifecycle fx.Lifecycle) {
+		lifecycle.Append(fx.Hook{
+			OnStart: container.onStart,
+			OnStop:  container.onStop,
+		})
+	}))
 	fx.New(container.modules...).Run()
 }
